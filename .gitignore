@@ -1,7 +1,21 @@
+# Python
 __pycache__/
 *.pyc
-.venv/
+.pytest_cache/
+
+# Virtual environment (each member creates their own)
 venv/
+.venv/
+
+# Secrets: your database password lives here. Commit .env.example instead.
 .env
+
+# Local databases (the tests use a temporary SQLite file)
 *.db
-.vscode/
+
+# Editors / OS (but keep the shared list of recommended VS Code extensions)
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
