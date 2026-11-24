@@ -1,4 +1,11 @@
 """Tests for register / login / access control. Owner: Member D."""
+import base64
+import json
+from datetime import datetime, timedelta, timezone
+
+import jwt
+
+from app.auth import AuthService
 from conftest import register
 
 
@@ -34,6 +41,28 @@ def test_protected_routes_need_login(client):
 def test_tampered_token_is_rejected(client):
     headers = register(client, "ben")
     token = headers["Authorization"].split(" ")[1]
-    user_id, expires, signature = token.split(".")
-    forged = f"999.{expires}.{signature}"  # try to pretend to be user 999
+    header, payload, signature = token.split(".")  # a JWT has three parts
+    data = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+    data["sub"] = "999"  # try to pretend to be user 999
+    forged_payload = base64.urlsafe_b64encode(json.dumps(data).encode()).decode().rstrip("=")
+    forged = f"{header}.{forged_payload}.{signature}"  # old signature no longer matches
     assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {forged}"}).status_code == 401
+
+
+def test_token_is_a_jwt_with_sub_and_exp(client):
+    headers = register(client, "ben")
+    token = headers["Authorization"].split(" ")[1]
+    payload = jwt.decode(token, AuthService.SECRET_KEY, algorithms=[AuthService.ALGORITHM])
+    me = client.get("/api/auth/me", headers=headers).json()
+    assert payload["sub"] == str(me["user_id"]) and "exp" in payload
+
+
+def test_expired_token_is_rejected(client):
+    headers = register(client, "ben")
+    user_id = client.get("/api/auth/me", headers=headers).json()["user_id"]
+    expired = jwt.encode(
+        {"sub": str(user_id), "exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
+        AuthService.SECRET_KEY,
+        algorithm=AuthService.ALGORITHM,
+    )
+    assert client.get("/api/auth/me", headers={"Authorization": f"Bearer {expired}"}).status_code == 401

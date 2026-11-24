@@ -6,18 +6,20 @@ Owner: Member A (API)
 AuthService groups everything about identity in one class (slide 67):
     hash_password()     -> store only a salted hash, never the password
     verify_password()   -> compare an entered password with the stored hash
-    create_token()      -> signed token that carries the user_id and an expiry
-    read_token()        -> user_id if the token is genuine and not expired
+    create_token()      -> JWT (header.payload.signature) with "sub" = user_id and "exp"
+    read_token()        -> user_id if the JWT signature is valid and it has not expired
+A JWT is SIGNED, not encrypted: anyone can read the payload, nobody can change it
+without the SECRET_KEY. So we never put passwords or secrets inside it (slide 58).
 get_current_user() is the FastAPI dependency every protected route uses:
 missing, invalid or expired token -> 401 Unauthorized.
 """
-import base64  # codifica bytes en texto seguro para URLs (para la firma del token)
 import hashlib  # algoritmos de hash: PBKDF2 y SHA-256
-import hmac  # firma con clave secreta y comparación segura de textos
+import hmac  # comparación de textos en tiempo constante (compare_digest)
 import os  # lee variables de entorno, como SECRET_KEY desde .env
 import secrets  # genera bytes aleatorios seguros para la "sal"
-import time  # hora actual en segundos, para la expiración del token
+from datetime import datetime, timedelta, timezone  # fechas y duraciones, para la expiración "exp" del JWT
 
+import jwt  # librería PyJWT: crea y verifica tokens JWT
 from fastapi import Depends, HTTPException, status  # inyección de dependencias, errores HTTP y códigos de estado
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # lee la cabecera "Authorization: Bearer <token>"
 from sqlalchemy.orm import Session  # tipo de la sesión de base de datos
@@ -27,8 +29,9 @@ from .database import get_db  # dependencia que abre y cierra una sesión por pe
 
 
 class AuthService:  # clase que agrupa toda la lógica de autenticación
-    SECRET_KEY = os.getenv("SECRET_KEY", "change-me-for-anything-real")  # clave secreta para firmar tokens, leída de .env
-    TOKEN_LIFETIME_SECONDS = 60 * 60 * 24  # el token vale 24 horas
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-secret-change-me-in-env-file-0123456789abcdef")  # clave secreta para firmar tokens, leída de .env (mínimo 32 caracteres para HS256)
+    ALGORITHM = "HS256"  # algoritmo de firma del JWT: HMAC con SHA-256 y la SECRET_KEY
+    TOKEN_LIFETIME = timedelta(hours=24)  # el token vale 24 horas
     PBKDF2_ROUNDS = 200_000  # repeticiones del hash: hace lento adivinar contraseñas
 
     @staticmethod  # método que no necesita un objeto: se llama AuthService.hash_password(...)
@@ -44,27 +47,18 @@ class AuthService:  # clase que agrupa toda la lógica de autenticación
         return hmac.compare_digest(digest.hex(), digest_hex)  # compara en tiempo constante (evita ataques por tiempo); el hash nunca se "descifra"
 
     @staticmethod  # método estático
-    def _sign(message: str) -> str:  # firma interna: huella del mensaje hecha con la clave secreta
-        mac = hmac.new(AuthService.SECRET_KEY.encode(), message.encode(), hashlib.sha256).digest()  # HMAC-SHA256 del mensaje
-        return base64.urlsafe_b64encode(mac).decode().rstrip("=")  # lo pasa a texto corto y seguro para URLs
+    def create_token(user_id: int) -> str:  # crea el JWT que recibe el cliente al registrarse o hacer login
+        expires = datetime.now(timezone.utc) + AuthService.TOKEN_LIFETIME  # momento de expiración: ahora (UTC) + 24 h
+        payload = {"sub": str(user_id), "exp": expires}  # contenido del JWT: "sub" = id del usuario (como texto), "exp" = expiración
+        return jwt.encode(payload, AuthService.SECRET_KEY, algorithm=AuthService.ALGORITHM)  # codifica y firma: "header.payload.signature"
 
     @staticmethod  # método estático
-    def create_token(user_id: int) -> str:  # crea el token que recibe el cliente al hacer login
-        expires = int(time.time()) + AuthService.TOKEN_LIFETIME_SECONDS  # momento de expiración: ahora + 24 h
-        message = f"{user_id}.{expires}"  # contenido del token: id del usuario y expiración
-        return f"{message}.{AuthService._sign(message)}"  # token final: "id.expiración.firma"
-
-    @staticmethod  # método estático
-    def read_token(token: str) -> int | None:  # devuelve el user_id si el token es válido; si no, None
-        try:  # intenta separar las 3 partes del token
-            user_id, expires, signature = token.split(".")  # "id.expiración.firma" -> 3 variables
-        except ValueError:  # si no tiene exactamente 3 partes
-            return None  # token mal formado -> inválido
-        if not hmac.compare_digest(signature, AuthService._sign(f"{user_id}.{expires}")):  # recalcula la firma y la compara
-            return None  # firma distinta -> alguien modificó el token -> inválido
-        if int(expires) < time.time():  # si la expiración ya pasó
-            return None  # token vencido -> inválido
-        return int(user_id)  # token válido -> devuelve el id del usuario
+    def read_token(token: str) -> int | None:  # devuelve el user_id si el JWT es válido; si no, None
+        try:  # jwt.decode lanza una excepción si algo está mal
+            payload = jwt.decode(token, AuthService.SECRET_KEY, algorithms=[AuthService.ALGORITHM])  # verifica la firma y que "exp" no haya pasado
+            return int(payload["sub"])  # token válido -> devuelve el id del usuario guardado en "sub"
+        except (jwt.PyJWTError, KeyError, ValueError):  # firma alterada, token vencido, mal formado o sin "sub"
+            return None  # cualquiera de esos casos -> token inválido
 
 
 bearer_scheme = HTTPBearer(auto_error=False)  # extrae el token de "Authorization: Bearer ..."; sin error automático para dar nuestro propio 401
