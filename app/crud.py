@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .categorizer import DEFAULT_RULES, Categorizer, Rule, normalize
-from .security import hash_password
+from .auth import AuthService
 
 DEFAULT_CATEGORIES = [
     ("Food", "#f97316"),
@@ -52,7 +52,7 @@ def create_user(db: Session, data: schemas.UserCreate) -> models.User:
     user = models.User(
         username=data.username,
         email=data.email.lower(),
-        password_hash=hash_password(data.password),
+        password_hash=AuthService.hash_password(data.password),
         phone_number=data.phone_number or None,
     )
     db.add(user)      # stage the new row

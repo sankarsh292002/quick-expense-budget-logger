@@ -48,7 +48,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True, index=True)
     username = Column(String(30), unique=True, nullable=False, index=True)
     email = Column(String(120), unique=True, nullable=False)
-    # We NEVER store the real password, only a salted hash (see security.py).
+    # We NEVER store the real password, only a salted hash (see auth.py).
     password_hash = Column(String(200), nullable=False)
     phone_number = Column(String(20), nullable=True)  # optional
     created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)

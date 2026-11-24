@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from .. import crud, models, schemas
 from ..categorizer import normalize
 from ..database import get_db
-from ..security import get_current_user
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/api", tags=["auto-categorization"])
 

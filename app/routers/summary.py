@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
 from ..schemas import MONTH_PATTERN
-from ..security import get_current_user
+from ..auth import get_current_user
 from ..summary import build_summary
 
 router = APIRouter(prefix="/api/summary", tags=["summary"])
