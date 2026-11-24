@@ -16,7 +16,8 @@ purpose, so in the demo you can fill it by importing a bank file
 import random
 from datetime import date, timedelta
 
-from app import crud, models, schemas
+from app import models, schemas
+from app.services import BudgetService, CategoryService, RuleService, UserService
 from app.database import Base, SessionLocal, engine
 
 DEMO_USER = schemas.UserCreate(username="demo", email="demo@example.com", password="demo1234")
@@ -42,14 +43,14 @@ def main():
     random.seed(42)  # same "random" data every time, so the demo is predictable
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        crud.seed_categories(db)
-        crud.seed_default_rules(db)
-        old = crud.get_user_by_username(db, DEMO_USER.username)
+        CategoryService.seed_defaults(db)
+        RuleService.seed_defaults(db)
+        old = UserService.get_by_username(db, DEMO_USER.username)
         if old:
             db.delete(old)
             db.commit()
-        user = crud.create_user(db, DEMO_USER)
-        cats = {c.name: c.category_id for c in crud.list_categories(db)}
+        user = UserService.create(db, DEMO_USER)
+        cats = {c.name: c.category_id for c in CategoryService.list_all(db)}
 
         today = date.today()
         this_month_start = today.replace(day=1)
@@ -69,9 +70,9 @@ def main():
                 add(desc, cat, base * random.uniform(0.7, 1.3), start + timedelta(days=random.randrange(days)))
 
         for month in (month_str(last_month_start), month_str(this_month_start)):
-            crud.upsert_budget(db, user.user_id, schemas.BudgetCreate(limit_amount=1400, period_month=month))
+            BudgetService.upsert(db, user.user_id, schemas.BudgetCreate(limit_amount=1400, period_month=month))
             for cat, limit in [("Food", 250), ("Shopping", 200), ("Entertainment", 40), ("Transit", 220)]:
-                crud.upsert_budget(db, user.user_id, schemas.BudgetCreate(
+                BudgetService.upsert(db, user.user_id, schemas.BudgetCreate(
                     limit_amount=limit, period_month=month, category_id=cats[cat]))
         db.commit()
         count = db.query(models.Expense).filter_by(user_id=user.user_id).count()

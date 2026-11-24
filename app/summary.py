@@ -18,7 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import models
-from .crud import month_range
+from .services import month_range
 
 
 def build_summary(db: Session, user_id: int, month: str) -> dict:

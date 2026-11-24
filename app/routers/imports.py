@@ -16,7 +16,8 @@ Importing is two steps, so the user stays in control:
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..services import CategoryService, ExpenseService, RuleService
 from ..categorizer import merchant_key
 from ..database import get_db
 from ..importer import ImportFormatError, parse_transactions
@@ -41,14 +42,14 @@ async def preview_import(
     except ImportFormatError as err:
         raise HTTPException(status_code=422, detail=str(err))
 
-    categorizer = crud.build_categorizer(db, user.user_id)
-    categories_by_name = {c.name.lower(): c.category_id for c in crud.list_categories(db)}
+    categorizer = RuleService.build_categorizer(db, user.user_id)
+    categories_by_name = {c.name.lower(): c.category_id for c in CategoryService.list_all(db)}
     other_id = categories_by_name["other"]
 
     existing = set()
     if parsed.rows:
         dates = [r.expense_date for r in parsed.rows]
-        existing = crud.existing_expense_keys(db, user.user_id, min(dates), max(dates))
+        existing = ExpenseService.existing_keys(db, user.user_id, min(dates), max(dates))
 
     rows = []
     for r in parsed.rows:
@@ -77,7 +78,7 @@ def commit_import(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    valid_ids = {c.category_id: c.name for c in crud.list_categories(db)}
+    valid_ids = {c.category_id: c.name for c in CategoryService.list_all(db)}
     if any(row.category_id not in valid_ids for row in data.rows):
         raise HTTPException(status_code=422, detail="Unknown category in one of the rows")
 
@@ -98,7 +99,7 @@ def commit_import(
                 learned[keyword] = row.category_id  # last correction wins
 
     for keyword, category_id in learned.items():
-        crud.save_user_rule(db, user.user_id, keyword, category_id, commit=False)
+        RuleService.save_user_rule(db, user.user_id, keyword, category_id, commit=False)
     db.commit()  # all expenses and rules are saved together, or none of them
 
     return {

@@ -11,7 +11,7 @@ models.py) or you simply want a clean start:
 
 It asks for confirmation first, because the data cannot be recovered.
 """
-from app import crud
+from app.services import CategoryService, RuleService
 from app.database import Base, SessionLocal, engine
 
 
@@ -23,8 +23,8 @@ def main():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        crud.seed_categories(db)
-        crud.seed_default_rules(db)
+        CategoryService.seed_defaults(db)
+        RuleService.seed_defaults(db)
     print("Done: empty tables with default categories and keyword rules.")
 
 

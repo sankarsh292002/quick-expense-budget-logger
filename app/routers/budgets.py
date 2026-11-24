@@ -13,7 +13,8 @@ the same result (it updates rather than creating a duplicate).
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..services import BudgetService, CategoryService
 from ..database import get_db
 from ..schemas import MONTH_PATTERN
 from ..auth import get_current_user
@@ -27,7 +28,7 @@ def list_budgets(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    return crud.list_budgets(db, user.user_id, month)
+    return BudgetService.list_for_month(db, user.user_id, month)
 
 
 @router.put("", response_model=schemas.BudgetOut)
@@ -36,15 +37,15 @@ def set_budget(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    if data.category_id is not None and crud.get_category(db, data.category_id) is None:
+    if data.category_id is not None and CategoryService.get(db, data.category_id) is None:
         raise HTTPException(status_code=422, detail="Unknown category")
-    return crud.upsert_budget(db, user.user_id, data)
+    return BudgetService.upsert(db, user.user_id, data)
 
 
 @router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_budget(budget_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    budget = crud.get_budget(db, user.user_id, budget_id)
+    budget = BudgetService.get_for_user(db, user.user_id, budget_id)
     if budget is None:
         raise HTTPException(status_code=404, detail="Budget not found")
-    crud.delete_budget(db, budget)
+    BudgetService.delete(db, budget)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

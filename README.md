@@ -8,9 +8,9 @@ M.Eng. Engineering and Sustainable Technology Management (Industry 4.0).
 | Layer | Technology | Where |
 | --- | --- | --- |
 | Web interface | HTML, CSS, JavaScript, Chart.js | `static/` |
-| REST API | Python, FastAPI | `app/main.py`, `app/security.py`, `app/routers/` |
+| REST API | Python, FastAPI | `app/main.py`, `app/auth.py`, `app/routers/` |
 | Processing engine | CSV reader, keyword categorizer, SQL aggregation | `app/importer.py`, `app/categorizer.py`, `app/summary.py` |
-| Database | PostgreSQL via SQLAlchemy ORM (psycopg driver) | `app/database.py`, `app/models.py`, `app/crud.py` |
+| Database | PostgreSQL via SQLAlchemy ORM (psycopg driver) | `app/database.py`, `app/models.py`, `app/services.py` |
 | API testing | Postman collection | `postman/` |
 | Automated tests | pytest | `tests/` |
 
@@ -50,11 +50,11 @@ Open **http://127.0.0.1:8000** (log in as `demo` / `demo1234`) and
  Browser (static/)                      Server (app/)                                 PostgreSQL
  ┌──────────────────────┐   HTTP+JSON   ┌────────────────────────────────────────┐    ┌────────────────┐
  │ index.html  layout   │ ────────────► │ routers/*.py      REST endpoints       │    │ users          │
- │ style.css   look     │               │ security.py       login, tokens        │    │ categories     │
+ │ style.css   look     │               │ auth.py           hashing, JWT, 401    │    │ categories     │
  │ app.js      forms    │               │ schemas.py        validation           │    │ category_rules │
  │ import.js   CSV flow │ ◄──────────── │ importer.py       reads CSV files      │──► │ expenses       │
  │ charts.js   Chart.js │               │ categorizer.py    keyword matching     │ORM │ budgets        │
- │ api.js      fetch()  │               │ crud.py / summary.py  read, write, sum │◄── │                │
+ │ api.js      fetch()  │               │ services.py       CRUD service classes │◄── │                │
  └──────────────────────┘               └────────────────────────────────────────┘    └────────────────┘
 ```
 
@@ -149,8 +149,8 @@ amounts are expenses; positive ones are skipped as income when a file has both.
 
 | Member | Role | Files |
 | --- | --- | --- |
-| A | API Lead | `app/main.py`, `app/security.py`, `app/routers/*`, `postman/*` |
-| B | Database Lead | `app/database.py`, `app/models.py`, `app/schemas.py`, `app/crud.py`, `app/summary.py`, `scripts/*`, `.env.example` |
+| A | API Lead | `app/main.py`, `app/auth.py`, `app/routers/*`, `postman/*` |
+| B | Database Lead | `app/database.py`, `app/models.py`, `app/schemas.py`, `app/services.py`, `app/summary.py`, `scripts/*`, `.env.example` |
 | C | Frontend Lead | `static/*` |
 | D | Processing Engine & Testing Lead | `app/importer.py`, `app/categorizer.py`, `sample_data/*`, `tests/*`, `README.md`, `requirements.txt`, `pytest.ini`, `.gitignore`, `.vscode/` |
 
@@ -166,7 +166,7 @@ Every file starts with a comment naming its owner and explaining the key idea.
 - **CSV only:** Excel files must be saved as CSV first; PDF statements are not read.
 - **Duplicates** are detected by same date + amount + description; two identical
   coffees on one day in a *new* file are both kept.
-- **Simple tokens:** a simplified version of JWT, kept in the browser's localStorage.
+- **JWT tokens** (HS256, `sub` + `exp`), kept in the browser's localStorage. An HttpOnly cookie would protect the token better against XSS.
 - **No database migrations:** `create_all` makes missing tables but does not change
   existing ones; after a change to `models.py` run `python -m scripts.reset_db`.
   A real project would use Alembic.

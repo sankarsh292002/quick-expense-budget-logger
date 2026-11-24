@@ -9,7 +9,8 @@ Owner: Member A (API)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..services import CategoryService
 from ..database import get_db
 from ..auth import get_current_user
 
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/api/categories", tags=["categories"])
 
 @router.get("", response_model=list[schemas.CategoryOut])
 def list_categories(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return crud.list_categories(db)
+    return CategoryService.list_all(db)
 
 
 @router.post("", response_model=schemas.CategoryOut, status_code=status.HTTP_201_CREATED)
@@ -27,6 +28,6 @@ def add_category(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
-    if crud.get_category_by_name(db, data.name.strip()):
+    if CategoryService.get_by_name(db, data.name.strip()):
         raise HTTPException(status_code=409, detail="Category already exists")
-    return crud.create_category(db, data)
+    return CategoryService.create(db, data)

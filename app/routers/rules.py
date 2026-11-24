@@ -11,7 +11,8 @@ Owner: Member A (API). The matching logic lives in app/categorizer.py (Member D)
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..services import CategoryService, RuleService
 from ..categorizer import normalize
 from ..database import get_db
 from ..auth import get_current_user
@@ -31,7 +32,7 @@ def _rule_out(rule: models.CategoryRule) -> dict:
 
 @router.get("/rules", response_model=list[schemas.RuleOut])
 def list_rules(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    return [_rule_out(r) for r in crud.list_rules(db, user.user_id)]
+    return [_rule_out(r) for r in RuleService.list_for_user(db, user.user_id)]
 
 
 @router.post("/rules", response_model=schemas.RuleOut, status_code=status.HTTP_201_CREATED)
@@ -39,11 +40,11 @@ def add_rule(data: schemas.RuleCreate, db: Session = Depends(get_db), user: mode
     keyword = normalize(data.keyword)
     if len(keyword) < 2:
         raise HTTPException(status_code=422, detail="Keyword must contain at least 2 letters or digits")
-    if crud.get_category(db, data.category_id) is None:
+    if CategoryService.get(db, data.category_id) is None:
         raise HTTPException(status_code=422, detail="Unknown category")
-    if crud.get_user_rule(db, user.user_id, keyword):
+    if RuleService.get_user_rule(db, user.user_id, keyword):
         raise HTTPException(status_code=409, detail=f"You already have a rule for '{keyword}'")
-    return _rule_out(crud.save_user_rule(db, user.user_id, keyword, data.category_id))
+    return _rule_out(RuleService.save_user_rule(db, user.user_id, keyword, data.category_id))
 
 
 @router.delete("/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -53,17 +54,17 @@ def remove_rule(rule_id: int, db: Session = Depends(get_db), user: models.User =
         raise HTTPException(status_code=404, detail="Rule not found")
     if rule.user_id is None:
         raise HTTPException(status_code=403, detail="Built-in rules cannot be deleted; add your own rule to override it")
-    crud.delete_rule(db, rule)
+    RuleService.delete(db, rule)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/categorize", response_model=schemas.CategorizeOut)
 def categorize(data: schemas.CategorizeRequest, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    match = crud.build_categorizer(db, user.user_id).categorize(data.description)
+    match = RuleService.build_categorizer(db, user.user_id).categorize(data.description)
     if match:
-        category = crud.get_category(db, match.category_id)
+        category = CategoryService.get(db, match.category_id)
         return {"category_id": category.category_id, "category_name": category.name,
                 "matched_keyword": match.keyword, "match_source": match.source}
-    other = crud.get_category_by_name(db, "Other")
+    other = CategoryService.get_by_name(db, "Other")
     return {"category_id": other.category_id, "category_name": other.name,
             "matched_keyword": None, "match_source": None}
