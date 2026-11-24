@@ -20,7 +20,7 @@ from .. import crud, models, schemas
 from ..categorizer import merchant_key
 from ..database import get_db
 from ..importer import ImportFormatError, parse_transactions
-from ..security import get_current_user
+from ..auth import get_current_user
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
