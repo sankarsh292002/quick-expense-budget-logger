@@ -35,6 +35,10 @@
     {
       "key": "ruleId",
       "value": ""
+    },
+    {
+      "key": "otherToken",
+      "value": ""
     }
   ],
   "item": [
@@ -160,7 +164,14 @@
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
                   "pm.collectionVariables.set(\"token\", pm.response.json().access_token);",
-                  "pm.test(\"Token received\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));"
+                  "pm.test(\"Token received\", () => pm.expect(pm.response.json().access_token).to.be.a(\"string\"));",
+                  "pm.test(\"Token is a JWT with sub and exp\", () => {",
+                  "    const parts = pm.response.json().access_token.split(\".\");",
+                  "    pm.expect(parts.length).to.eql(3);  // header.payload.signature",
+                  "    const payload = JSON.parse(atob(parts[1].replace(/-/g, \"+\").replace(/_/g, \"/\")));",
+                  "    pm.expect(payload).to.have.property(\"sub\");",
+                  "    pm.expect(payload).to.have.property(\"exp\");",
+                  "});"
                 ]
               }
             }
@@ -237,6 +248,77 @@
                 "exec": [
                   "pm.test(\"Status is 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
                   "pm.test(\"No password in the answer\", () => pm.expect(pm.response.json()).to.not.have.property(\"password_hash\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I without token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.expect(pm.response.code).to.be.oneOf([401]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Who am I with a forged token (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI5OTkifQ.forged-signature",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.expect(pm.response.code).to.be.oneOf([401]));"
                 ]
               }
             }
@@ -362,6 +444,177 @@
                 "exec": [
                   "pm.test(\"Status is 201\", () => pm.expect(pm.response.code).to.be.oneOf([201]));",
                   "pm.collectionVariables.set(\"expenseId\", pm.response.json().expense_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register a second user (201, or 409 if it exists)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_other\",\n  \"email\": \"postman_other@example.com\",\n  \"password\": \"postman123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201 or 409\", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in as second user (saves otherToken)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_other\",\n  \"password\": \"postman123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.expect(pm.response.code).to.be.oneOf([200]));",
+                  "pm.collectionVariables.set(\"otherToken\", pm.response.json().access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second user reads my expense (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second user deletes my expense (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/expenses/{{expenseId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "expenses",
+                "{{expenseId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{otherToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", () => pm.expect(pm.response.code).to.be.oneOf([403]));"
                 ]
               }
             }
