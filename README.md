@@ -21,26 +21,77 @@ GitHub workflow and the schedule) is in the team's implementation guide document
 
 ## 1. Run it
 
-You need **Python 3.13**, **PostgreSQL** with a database called `expense_logger`
-(create it in pgAdmin), and this folder open in a terminal.
+### What you need
 
-| Step | Windows (cmd) | Mac (Terminal) |
+- *Python 3.12 or 3.13* (from python.org, with "Add python.exe to PATH" ticked), or Anaconda
+- *PostgreSQL* with *pgAdmin 4*, port 5432
+- *Git* and *VS Code; **Postman* to test the API
+- In pgAdmin: Servers → PostgreSQL → Databases → Create → Database… named expense_logger
+
+### Steps
+
+| Step | Windows (PowerShell) | Mac (Terminal) |
 | --- | --- | --- |
-| Create the virtual environment | `py -V:3.13 -m venv venv` | `python3.13 -m venv venv` |
-| Activate it | `venv\Scripts\activate` | `source venv/bin/activate` |
-| Install packages | `pip install -r requirements.txt` | same |
-| Create your settings file | `copy .env.example .env` | `cp .env.example .env` |
-| Put your PostgreSQL password into `.env` | open `.env` in VS Code | same |
-| (optional) Demo data | `python -m scripts.seed_demo` | same |
-| Start the server | `uvicorn app.main:app --reload` | same |
+| Get the code | git clone https://github.com/sankarsh292002/quick-expense-budget-logger.git | same |
+| Enter the folder | cd quick-expense-budget-logger | same |
+| Create the virtual environment | python -m venv venv (or py -3.13 -m venv venv) | python3 -m venv venv |
+| Activate it | .\venv\Scripts\Activate.ps1 | source venv/bin/activate |
+| Install packages | python -m pip install -r requirements.txt | same |
+| Create your settings file | copy .env.example .env | cp .env.example .env |
+| Generate a secret key | python -c "import secrets; print(secrets.token_hex(32))" | same |
+| Load demo data | python -m scripts.seed_demo | same |
+| Start the server | uvicorn app.main:app --reload | same |
 
-Open **http://127.0.0.1:8000** (log in as `demo` / `demo1234`) and
-**http://127.0.0.1:8000/docs** for the interactive API documentation.
+Before loading the demo data, open .env and set two lines:
 
-- Tests: `pytest` (50 tests). They use a temporary SQLite file by default; see
-  `tests/conftest.py` to run them against PostgreSQL.
-- Postman: *Import* → `postman/ExpenseLogger.postman_collection.json` → run *Auth › Log in* first.
-- Clean database: `python -m scripts.reset_db`.
+
+DATABASE_URL=postgresql+psycopg://postgres:YOUR_POSTGRES_PASSWORD@localhost:5432/expense_logger
+SECRET_KEY=the 64 characters printed by the command above
+
+
+.env is in .gitignore, so your password and key never reach GitHub. Every new terminal
+needs the virtual environment activated again (you see (venv) at the start of the line).
+
+Then open:
+
+- *http://127.0.0.1:8000*: the dashboard; log in as demo / demo1234
+- *http://127.0.0.1:8000/docs*: interactive API documentation (Swagger)
+
+Stop the server with *Ctrl + C*. Reset the database with python -m scripts.reset_db.
+The database design is described in [docs/database.md](docs/database.md).
+
+### Tests
+
+python -m pytest -q runs 62 automated tests: registration and login, JWT (forged and
+expired tokens), 401 and 403, expense and budget CRUD and validation, the monthly summary,
+the CSV importer and the import API. They use a temporary SQLite database, so they do not
+touch your PostgreSQL data. To run them against PostgreSQL instead, see tests/conftest.py.
+
+### Postman
+
+1. Import → postman/ExpenseLogger.postman_collection.json
+2. Collection → Variables → check that baseUrl is http://127.0.0.1:8000 → Save
+3. Right-click the collection → Run collection → Run. All checks should pass.
+   The Log in request saves the token; every other request sends it automatically.
+4. For Import › Preview a CSV file: Body → form-data → key file of type *File*
+   → Select Files → sample_data/transactions_simple.csv. If Postman asks, enable
+   Settings → General → Allow reading files outside working directory.
+
+### Troubleshooting
+
+| Error | Cause | Fix |
+| --- | --- | --- |
+| python is not recognized, or the Microsoft Store opens | Python is not installed or not in PATH | Install Python 3.13 from python.org with "Add python.exe to PATH"; turn off the Store aliases in Settings → Apps → Advanced app settings → App execution aliases; restart VS Code. Or use py instead of python |
+| running scripts is disabled on this system | PowerShell blocks Activate.ps1 | Set-ExecutionPolicy -Scope CurrentUser RemoteSigned, then activate again. Or skip activation and use .\venv\Scripts\python.exe |
+| ModuleNotFoundError: No module named 'jwt' (or psycopg, dotenv) | The wrong Python is active, e.g. another .venv auto-activated by VS Code | deactivate, then Ctrl+Shift+P → Python: Select Interpreter → the project's venv; run python -m pip install -r requirements.txt |
+| No module named 'conftest' | A test file was run with the ▶️ button or saved outside tests/ | Keep test files in tests/ and run them with python -m pytest |
+| password authentication failed for user "postgres" | Wrong password in .env | Fix DATABASE_URL in .env, save, restart the server |
+| connection refused on port 5432 | PostgreSQL is not running | Windows: Services → postgresql-x64-… → Start |
+| database "expense_logger" does not exist | Database not created | Create it in pgAdmin, spelled exactly expense_logger |
+| [Errno 10048] / address already in use, or the page keeps loading | An old server is still running on port 8000 | Stop it with Ctrl + C or taskkill /F /IM uvicorn.exe, or use uvicorn app.main:app --reload --port 8001 |
+| Postman: 401 on every request | Not logged in, or the token expired (24 h) | Run Auth › Log in again |
+| Postman: Request could not be sent on Preview a CSV file | Postman cannot read the file | Select the CSV again (see Postman step 4) |
+
 
 ---
 
