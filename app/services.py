@@ -106,11 +106,8 @@ class ExpenseService:  # operaciones sobre la tabla expenses
         return db.scalars(query).all()  # ejecuta la consulta y devuelve la lista
 
     @staticmethod  # método estático
-    def get_for_user(db: Session, user_id: int, expense_id: int):  # un gasto, solo si pertenece al usuario
-        expense = db.get(models.Expense, expense_id)  # busca el gasto por su clave primaria
-        if expense is None or expense.user_id != user_id:  # no existe, o es de otro usuario
-            return None  # se trata igual que "no encontrado"
-        return expense  # devuelve el gasto
+    def get(db: Session, expense_id: int):  # busca un gasto por su clave primaria, sea de quien sea
+        return db.get(models.Expense, expense_id)  # devuelve el gasto o None; el router decide si es 404 o 403
 
     @staticmethod  # método estático
     def create(db: Session, user_id: int, data: schemas.ExpenseCreate, source: str = "manual") -> models.Expense:  # crea un gasto
@@ -176,11 +173,8 @@ class BudgetService:  # operaciones sobre la tabla budgets
         return budget  # devuelve el presupuesto
 
     @staticmethod  # método estático
-    def get_for_user(db: Session, user_id: int, budget_id: int):  # un presupuesto, solo si pertenece al usuario
-        budget = db.get(models.Budget, budget_id)  # busca por clave primaria
-        if budget is None or budget.user_id != user_id:  # no existe o es de otro usuario
-            return None  # se trata como "no encontrado"
-        return budget  # devuelve el presupuesto
+    def get(db: Session, budget_id: int):  # busca un presupuesto por su clave primaria, sea de quien sea
+        return db.get(models.Budget, budget_id)  # devuelve el presupuesto o None; el router decide si es 404 o 403
 
     @staticmethod  # método estático
     def delete(db: Session, budget: models.Budget) -> None:  # borra un presupuesto

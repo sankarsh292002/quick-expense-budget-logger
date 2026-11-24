@@ -5,7 +5,7 @@ Owner: Member A (API)
 
     GET    /api/budgets?month=2026-11   budgets for that month
     PUT    /api/budgets                 set a limit (creates or updates)
-    DELETE /api/budgets/{id}            remove a limit
+    DELETE /api/budgets/{id}            remove a limit (403 if it belongs to another user)
 
 PUT is used instead of POST because sending the same budget twice gives
 the same result (it updates rather than creating a duplicate).
@@ -44,8 +44,10 @@ def set_budget(
 
 @router.delete("/{budget_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_budget(budget_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    budget = BudgetService.get_for_user(db, user.user_id, budget_id)
-    if budget is None:
-        raise HTTPException(status_code=404, detail="Budget not found")
+    budget = BudgetService.get(db, budget_id)  # busca el presupuesto por su id
+    if budget is None:  # no existe
+        raise HTTPException(status_code=404, detail="Budget not found")  # 404: el recurso no existe
+    if budget.user_id != user.user_id:  # existe, pero es de otro usuario
+        raise HTTPException(status_code=403, detail="Forbidden: this budget belongs to another user")  # 403: sin permiso
     BudgetService.delete(db, budget)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

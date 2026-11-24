@@ -67,5 +67,14 @@ def test_users_cannot_see_each_others_expenses(client, auth, categories):
     expense_id = add(client, auth, categories["Food"]).json()["expense_id"]
     other = register(client, "mallory")
     assert client.get("/api/expenses?month=2026-11", headers=other).json() == []
-    assert client.get(f"/api/expenses/{expense_id}", headers=other).status_code == 404
-    assert client.delete(f"/api/expenses/{expense_id}", headers=other).status_code == 404
+    # authenticated, but not the owner -> 403 Forbidden (slide 64)
+    assert client.get(f"/api/expenses/{expense_id}", headers=other).status_code == 403
+    update = {"amount": 1, "description": "hacked", "category_id": categories["Food"], "expense_date": "2026-11-05"}
+    assert client.put(f"/api/expenses/{expense_id}", headers=other, json=update).status_code == 403
+    assert client.delete(f"/api/expenses/{expense_id}", headers=other).status_code == 403
+    # the owner still has the expense, unchanged
+    assert client.get(f"/api/expenses/{expense_id}", headers=auth).json()["description"] != "hacked"
+
+
+def test_missing_expense_is_404(client, auth):
+    assert client.get("/api/expenses/999999", headers=auth).status_code == 404
