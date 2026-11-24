@@ -15,7 +15,8 @@ you only ever see your own expenses.
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..services import CategoryService, ExpenseService
 from ..database import get_db
 from ..schemas import MONTH_PATTERN
 from ..auth import get_current_user
@@ -24,12 +25,12 @@ router = APIRouter(prefix="/api/expenses", tags=["expenses"])
 
 
 def _check_category(db: Session, category_id: int) -> None:
-    if crud.get_category(db, category_id) is None:
+    if CategoryService.get(db, category_id) is None:
         raise HTTPException(status_code=422, detail="Unknown category")
 
 
 def _find_or_404(db: Session, user: models.User, expense_id: int) -> models.Expense:
-    expense = crud.get_expense(db, user.user_id, expense_id)
+    expense = ExpenseService.get_for_user(db, user.user_id, expense_id)
     if expense is None:
         raise HTTPException(status_code=404, detail="Expense not found")
     return expense
@@ -42,7 +43,7 @@ def list_expenses(
     db: Session = Depends(get_db),
     user: models.User = Depends(get_current_user),
 ):
-    return crud.list_expenses(db, user.user_id, month, category_id)
+    return ExpenseService.list_for_user(db, user.user_id, month, category_id)
 
 
 @router.post("", response_model=schemas.ExpenseOut, status_code=status.HTTP_201_CREATED)
@@ -52,7 +53,7 @@ def add_expense(
     user: models.User = Depends(get_current_user),
 ):
     _check_category(db, data.category_id)
-    return crud.create_expense(db, user.user_id, data)
+    return ExpenseService.create(db, user.user_id, data)
 
 
 @router.get("/{expense_id}", response_model=schemas.ExpenseOut)
@@ -69,10 +70,10 @@ def edit_expense(
 ):
     expense = _find_or_404(db, user, expense_id)
     _check_category(db, data.category_id)
-    return crud.update_expense(db, expense, data)
+    return ExpenseService.update(db, expense, data)
 
 
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_expense(expense_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
-    crud.delete_expense(db, _find_or_404(db, user, expense_id))
+    ExpenseService.delete(db, _find_or_404(db, user, expense_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

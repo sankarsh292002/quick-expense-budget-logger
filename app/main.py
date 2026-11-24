@@ -21,7 +21,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from . import crud
+from .services import CategoryService, RuleService
 from .database import Base, SessionLocal, engine
 from .routers import auth, budgets, categories, expenses, imports, rules, summary
 
@@ -34,8 +34,8 @@ SAMPLES_DIR = ROOT / "sample_data"
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     with SessionLocal() as db:
-        crud.seed_categories(db)
-        crud.seed_default_rules(db)
+        CategoryService.seed_defaults(db)
+        RuleService.seed_defaults(db)
     yield
 
 
