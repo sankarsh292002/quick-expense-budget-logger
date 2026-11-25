@@ -10,11 +10,24 @@
 
 const euro = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
 const charts = {}; // keep each chart so we can update it instead of redrawing
+// Read a colour from the current theme (see :root and body.dark in style.css).
+function themeColor(name) {
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+
+// Throw the old charts away so they are redrawn in the new theme's colours.
+function resetCharts() {
+  for (const id in charts) {
+    charts[id].destroy();
+    delete charts[id];
+  }
+}
 
 Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
-Chart.defaults.color = "#64748b";
+Chart.defaults.color = themeColor("--muted");
 
 function upsertChart(id, config) {
+    Chart.defaults.color = themeColor("--muted");
   if (charts[id]) {
     charts[id].data = config.data;
     charts[id].options = config.options;
@@ -35,7 +48,7 @@ function drawCategoryChart(byCategory) {
         data: byCategory.map((c) => c.total),
         backgroundColor: byCategory.map((c) => c.color),
         borderWidth: 2,
-        borderColor: "#fff",
+             borderColor: themeColor("--surface"),
       }],
     },
     options: {
@@ -98,7 +111,7 @@ function drawBudgetChart(budgets) {
           beginAtZero: true,
           suggestedMax: Math.ceil(maxPercent / 25) * 25,
           ticks: { callback: (v) => `${v}%` },
-          grid: { color: "#f1f5f9" },
+          grid: { color: themeColor("--border") },
         },
         y: { grid: { display: false } },
       },
@@ -134,7 +147,7 @@ function drawDateChart(byDate) {
       maintainAspectRatio: false,
       scales: {
         x: { title: { display: true, text: "Day of month" }, grid: { display: false } },
-        y: { beginAtZero: true, ticks: { callback: (v) => euro.format(v) }, grid: { color: "#f1f5f9" } },
+        y: { beginAtZero: true, ticks: { callback: (v) => euro.format(v) }, grid: { color: themeColor("--border") } },
       },
       plugins: {
         legend: { display: false },
