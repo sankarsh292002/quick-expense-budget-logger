@@ -3,7 +3,7 @@ models.py - the database tables, written as Python classes (the ORM).
 
 Owner: Member B (Database)
 
-Each class below is one ENTITY from our ER diagram (docs/er-diagram.jpg).
+Each class below is one ENTITY from our ER diagram (docs/er-diagram.svg).
 Each Column is one ATTRIBUTE. Each ForeignKey is one RELATIONSHIP line.
 
     User     1 --- records ------  N Expense

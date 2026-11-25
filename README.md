@@ -76,7 +76,7 @@ Open **http://127.0.0.1:8000** (log in as `demo` / `demo1234`) and
 
 ## 3. Database design (from our ER diagram, extended)
 
-![ER diagram](docs/er-diagram.jpg)
+![ER diagram](docs/er-diagram.svg)
 
 | Table | Columns | Relationships |
 | --- | --- | --- |
