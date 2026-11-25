@@ -231,3 +231,10 @@ Every file starts with a comment naming its owner and explaining the key idea.
 with Claude (Anthropic) as permitted by the course instructor. Each team member
 reviewed, ran and documented the files they own, and extended them with their
 own changes, visible in the Git history.
+## Database (pgAdmin)
+
+The PostgreSQL database `expense_logger` has five tables:
+`users`, `categories`, `expenses`, `budgets` and `category_rules`.
+`docs/queries.sql` contains the SQL behind the dashboard charts, a query for the
+keyword rules, and the view `v_category_totals_by_month`. Open it in pgAdmin
+(expense_logger -> Tools -> Query Tool) and run one query at a time with F5.
