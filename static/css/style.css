@@ -225,3 +225,4 @@ tr.duplicate td { color: var(--muted); }
   color: var(--text);
   font: inherit;
 }
+#search-clear { margin-right: 12px; }
