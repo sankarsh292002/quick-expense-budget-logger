@@ -205,3 +205,15 @@ tr.duplicate td { color: var(--muted); }
 }
 .preview-wrap td:nth-child(2) { white-space: nowrap; }
 .preview-wrap td:nth-child(3) { white-space: normal; min-width: 180px; }
+/* Search box in the transaction history header */
+#search {
+  margin: 0 12px 0 auto;
+  padding: 8px 10px;
+  width: 220px;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}

@@ -97,7 +97,11 @@ async function refresh() {
 
 // ---------------- rendering ----------------
 
-function renderTable(expenses) {
+function renderTable(allExpenses) {
+  const query = $("search").value.trim().toLowerCase();
+  const expenses = query
+    ? allExpenses.filter((e) => e.description.toLowerCase().includes(query))
+    : allExpenses;
   $("history-empty").classList.toggle("hidden", expenses.length > 0);
   const rows = expenses.map((e) => {
     const cat = categoryById(e.category_id);
@@ -285,6 +289,7 @@ async function removeBudget(budget) {
 
 $("month").addEventListener("change", refresh);
 $("filter-category").addEventListener("change", refresh);
+$("search").addEventListener("input", () => renderTable(state.expenses));
 
 // ---------------- login / register ----------------
 
