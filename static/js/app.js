@@ -102,7 +102,11 @@ function renderTable(allExpenses) {
   const expenses = query
     ? allExpenses.filter((e) => e.description.toLowerCase().includes(query))
     : allExpenses;
+    $("history-empty").textContent = query && allExpenses.length > 0
+    ? `No transactions match "${query}".`
+    : "Nothing logged for this month.";
   $("history-empty").classList.toggle("hidden", expenses.length > 0);
+  $("search-clear").classList.toggle("hidden", !query);
   const rows = expenses.map((e) => {
     const cat = categoryById(e.category_id);
     const editBtn = el("button", { className: "icon-btn", textContent: "Edit", onclick: () => startEdit(e) });
@@ -290,6 +294,11 @@ async function removeBudget(budget) {
 $("month").addEventListener("change", refresh);
 $("filter-category").addEventListener("change", refresh);
 $("search").addEventListener("input", () => renderTable(state.expenses));
+$("search-clear").addEventListener("click", () => {
+  $("search").value = "";
+  renderTable(state.expenses);
+  $("search").focus();
+});
 
 // ---------------- login / register ----------------
 
