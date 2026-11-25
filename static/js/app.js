@@ -344,7 +344,26 @@ window.addEventListener("logged-out", () => {
 });
 
 // ---------------- start ----------------
+// ---------------- dark mode ----------------
 
+const themeBtn = $("theme-toggle");
+
+function applyTheme(dark) {
+  document.body.classList.toggle("dark", dark);
+  themeBtn.textContent = dark ? "Light mode" : "Dark mode";
+  try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch (e) {}
+  // Charts take their colours when they are drawn, so redraw them if we are logged in.
+  if (!$("app-screen").classList.contains("hidden")) {
+    resetCharts();
+    refresh();
+  }
+}
+
+themeBtn.addEventListener("click", () => applyTheme(!document.body.classList.contains("dark")));
+
+let savedTheme = null;
+try { savedTheme = localStorage.getItem("theme"); } catch (e) {}
+applyTheme(savedTheme === "dark");
 (async function start() {
   if (!api.token) return showAuth();
   try {
