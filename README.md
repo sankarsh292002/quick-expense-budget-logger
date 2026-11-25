@@ -227,14 +227,22 @@ Every file starts with a comment naming its owner and explaining the key idea.
 
 ## 8. AI usage
 
-*(Adapt this to what your professor asks for.)* The initial code was generated
-with Claude (Anthropic) as permitted by the course instructor. Each team member
-reviewed, ran and documented the files they own, and extended them with their
-own changes, visible in the Git history.
-## Database (pgAdmin)
+The initial code was generated with Claude (Anthropic), as permitted by the course
+instructor, and uploaded to the repository in one commit. After that, each member
+reviewed, ran and documented the files they own, and made their own changes through
+branches and reviewed pull requests (e.g. ER diagram v2, SQL queries and view, budget
+tests, Postman authorization checks), visible in the Git history.
 
-The PostgreSQL database `expense_logger` has five tables:
-`users`, `categories`, `expenses`, `budgets` and `category_rules`.
-`docs/queries.sql` contains the SQL behind the dashboard charts, a query for the
-keyword rules, and the view `v_category_totals_by_month`. Open it in pgAdmin
-(expense_logger -> Tools -> Query Tool) and run one query at a time with F5.
+---
+
+## Key features
+
+- Register and log in (hashed passwords, JWT tokens valid 24 h)
+- Log, edit and delete expenses; live category suggestion while typing
+- Import bank or spreadsheet CSV files with a preview: automatic categorization,
+  duplicate detection, income rows skipped, nothing saved until confirmed
+- Learns keyword rules from your corrections; manage your own rules in the dashboard
+- Monthly budgets, overall or per category, with over-budget warnings
+- Dashboard: 4 summary cards and 3 charts (by category, budget vs. spending, by day)
+- Every user sees only their own data (401 / 403)
+- 62 automated tests, Postman collection, SQL queries and a view for pgAdmin
