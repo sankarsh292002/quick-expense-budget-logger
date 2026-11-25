@@ -227,7 +227,7 @@ Every file starts with a comment naming its owner and explaining the key idea.
 
 ## 8. AI usage
 
-*(Adapt this to what your professor asks for.)* The initial code was generated
+The initial code was generated
 with Claude (Anthropic) as permitted by the course instructor. Each team member
 reviewed, ran and documented the files they own, and extended them with their
 own changes, visible in the Git history.
