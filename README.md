@@ -127,7 +127,7 @@ touch your PostgreSQL data. To run them against PostgreSQL instead, see tests/co
 
 ## 3. Database design (from our ER diagram, extended)
 
-![ER diagram](docs/er-diagram.jpg)
+![ER diagram](docs/er-diagram.svg)
 
 | Table | Columns | Relationships |
 | --- | --- | --- |
