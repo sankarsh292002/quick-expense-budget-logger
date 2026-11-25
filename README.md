@@ -14,8 +14,20 @@ M.Eng. Engineering and Sustainable Technology Management (Industry 4.0).
 | API testing | Postman collection | `postman/` |
 | Automated tests | pytest | `tests/` |
 
-The full step-by-step guide (installing VS Code, PostgreSQL, pgAdmin, Postman, the
-GitHub workflow and the schedule) is in the team's implementation guide document.
+## Key features
+
+- Register and log in (hashed passwords, JWT tokens valid 24 h)
+- Log, edit and delete expenses; live category suggestion while typing
+- Import bank or spreadsheet CSV files with a preview: automatic categorization,
+  duplicate detection, income rows skipped, nothing saved until confirmed
+- Learns keyword rules from your corrections; manage your own rules in the dashboard
+- Monthly budgets, overall or per category, with over-budget warnings
+- Dashboard: 4 summary cards and 3 charts (by category, budget vs. spending, by day)
+- Every user sees only their own data (401 / 403)
+- 62 automated tests, Postman collection, SQL queries and a view for pgAdmin
+
+Design notes: [docs/database.md](docs/database.md) (tables and design questions) and
+[docs/queries.sql](docs/queries.sql) (example SQL queries and a view).
 
 ---
 
@@ -23,79 +35,80 @@ GitHub workflow and the schedule) is in the team's implementation guide document
 
 ### What you need
 
-- *Python 3.12 or 3.13* (from python.org, with "Add python.exe to PATH" ticked), or Anaconda
-- *PostgreSQL* with *pgAdmin 4*, port 5432
-- *Git* and *VS Code; **Postman* to test the API
-- In pgAdmin: Servers → PostgreSQL → Databases → Create → Database… named expense_logger
+- **Python 3.12 or 3.13** (from python.org, with "Add python.exe to PATH" ticked), or Anaconda
+- **PostgreSQL** with **pgAdmin 4**, port 5432
+- **Git**, **VS Code** and **Postman** (to test the API)
+- In pgAdmin: Servers → PostgreSQL → Databases → Create → Database… named `expense_logger`
 
 ### Steps
 
 | Step | Windows (PowerShell) | Mac (Terminal) |
 | --- | --- | --- |
-| Get the code | git clone https://github.com/sankarsh292002/quick-expense-budget-logger.git | same |
-| Enter the folder | cd quick-expense-budget-logger | same |
-| Create the virtual environment | python -m venv venv (or py -3.13 -m venv venv) | python3 -m venv venv |
-| Activate it | .\venv\Scripts\Activate.ps1 | source venv/bin/activate |
-| Install packages | python -m pip install -r requirements.txt | same |
-| Create your settings file | copy .env.example .env | cp .env.example .env |
-| Generate a secret key | python -c "import secrets; print(secrets.token_hex(32))" | same |
-| Load demo data | python -m scripts.seed_demo | same |
-| Start the server | uvicorn app.main:app --reload | same |
+| Get the code | `git clone https://github.com/sankarsh292002/quick-expense-budget-logger.git` | same |
+| Enter the folder | `cd quick-expense-budget-logger` | same |
+| Create the virtual environment | `python -m venv venv` (or `py -3.13 -m venv venv`) | `python3 -m venv venv` |
+| Activate it | `.\venv\Scripts\Activate.ps1` | `source venv/bin/activate` |
+| Install packages | `python -m pip install -r requirements.txt` | same |
+| Create your settings file | `copy .env.example .env` | `cp .env.example .env` |
+| Generate a secret key | `python -c "import secrets; print(secrets.token_hex(32))"` | same |
+| Edit `.env` | open `.env` in VS Code and set the two lines below | same |
+| Load demo data | `python -m scripts.seed_demo` | same |
+| Start the server | `python -m uvicorn app.main:app --reload` | same |
 
-Before loading the demo data, open .env and set two lines:
+Before loading the demo data, open `.env` and set two lines:
 
-
+```text
 DATABASE_URL=postgresql+psycopg://postgres:YOUR_POSTGRES_PASSWORD@localhost:5432/expense_logger
 SECRET_KEY=the 64 characters printed by the command above
+```
 
-
-.env is in .gitignore, so your password and key never reach GitHub. Every new terminal
-needs the virtual environment activated again (you see (venv) at the start of the line).
+`.env` is in `.gitignore`, so your password and key never reach GitHub. Every new terminal
+needs the virtual environment activated again (you see `(venv)` at the start of the line).
 
 Then open:
 
-- *http://127.0.0.1:8000*: the dashboard; log in as demo / demo1234
-- *http://127.0.0.1:8000/docs*: interactive API documentation (Swagger)
+- **http://127.0.0.1:8000**: the dashboard; log in as `demo` / `demo1234`
+- **http://127.0.0.1:8000/docs**: interactive API documentation (Swagger)
 
-Stop the server with *Ctrl + C*. Reset the database with python -m scripts.reset_db.
-The database design is described in [docs/database.md](docs/database.md).
+Stop the server with **Ctrl + C**. Reset the database with `python -m scripts.reset_db`.
 
 ### Tests
 
-python -m pytest -q runs 62 automated tests: registration and login, JWT (forged and
+`python -m pytest -q` runs 62 automated tests: registration and login, JWT (forged and
 expired tokens), 401 and 403, expense and budget CRUD and validation, the monthly summary,
 the CSV importer and the import API. They use a temporary SQLite database, so they do not
-touch your PostgreSQL data. To run them against PostgreSQL instead, see tests/conftest.py.
+touch your PostgreSQL data. To run them against PostgreSQL instead, see `tests/conftest.py`.
 
 ### Postman
 
-1. Import → postman/ExpenseLogger.postman_collection.json
-2. Collection → Variables → check that baseUrl is http://127.0.0.1:8000 → Save
+1. Import → `postman/ExpenseLogger.postman_collection.json`
+2. Collection → Variables → check that `baseUrl` is `http://127.0.0.1:8000` → Save
 3. Right-click the collection → Run collection → Run. All checks should pass.
-   The Log in request saves the token; every other request sends it automatically.
-4. For Import › Preview a CSV file: Body → form-data → key file of type *File*
-   → Select Files → sample_data/transactions_simple.csv. If Postman asks, enable
+   The *Log in* request saves the token; every other request sends it automatically.
+4. For *Import › Preview a CSV file*: Body → form-data → key `file` of type **File**
+   → Select Files → `sample_data/transactions_simple.csv`. If Postman asks, enable
    Settings → General → Allow reading files outside working directory.
 
 ### Troubleshooting
 
 | Error | Cause | Fix |
 | --- | --- | --- |
-| python is not recognized, or the Microsoft Store opens | Python is not installed or not in PATH | Install Python 3.13 from python.org with "Add python.exe to PATH"; turn off the Store aliases in Settings → Apps → Advanced app settings → App execution aliases; restart VS Code. Or use py instead of python |
-| running scripts is disabled on this system | PowerShell blocks Activate.ps1 | Set-ExecutionPolicy -Scope CurrentUser RemoteSigned, then activate again. Or skip activation and use .\venv\Scripts\python.exe |
-| ModuleNotFoundError: No module named 'jwt' (or psycopg, dotenv) | The wrong Python is active, e.g. another .venv auto-activated by VS Code | deactivate, then Ctrl+Shift+P → Python: Select Interpreter → the project's venv; run python -m pip install -r requirements.txt |
-| No module named 'conftest' | A test file was run with the ▶️ button or saved outside tests/ | Keep test files in tests/ and run them with python -m pytest |
-| password authentication failed for user "postgres" | Wrong password in .env | Fix DATABASE_URL in .env, save, restart the server |
-| connection refused on port 5432 | PostgreSQL is not running | Windows: Services → postgresql-x64-… → Start |
-| database "expense_logger" does not exist | Database not created | Create it in pgAdmin, spelled exactly expense_logger |
-| [Errno 10048] / address already in use, or the page keeps loading | An old server is still running on port 8000 | Stop it with Ctrl + C or taskkill /F /IM uvicorn.exe, or use uvicorn app.main:app --reload --port 8001 |
-| Postman: 401 on every request | Not logged in, or the token expired (24 h) | Run Auth › Log in again |
-| Postman: Request could not be sent on Preview a CSV file | Postman cannot read the file | Select the CSV again (see Postman step 4) |
-
+| `python` is not recognized, or the Microsoft Store opens | Python is not installed or not in PATH | Install Python 3.13 from python.org with "Add python.exe to PATH"; turn off the Store aliases in Settings → Apps → Advanced app settings → App execution aliases; restart VS Code. Or use `py` instead of `python` |
+| running scripts is disabled on this system | PowerShell blocks `Activate.ps1` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then activate again. Or skip activation and use `.\venv\Scripts\python.exe` |
+| `ModuleNotFoundError: No module named 'jwt'` (or `psycopg`, `dotenv`) | The wrong Python is active, e.g. another `.venv` auto-activated by VS Code | `deactivate`, then Ctrl+Shift+P → Python: Select Interpreter → the project's `venv`; run `python -m pip install -r requirements.txt` |
+| `No module named 'conftest'` | A test file was run with the ▶️ button or saved outside `tests/` | Keep test files in `tests/` and run them with `python -m pytest` |
+| `password authentication failed for user "postgres"` | Wrong password in `.env` | Fix `DATABASE_URL` in `.env`, save, restart the server |
+| `connection refused` on port 5432 | PostgreSQL is not running | Windows: Services → postgresql-x64-… → Start |
+| `database "expense_logger" does not exist` | Database not created | Create it in pgAdmin, spelled exactly `expense_logger` |
+| `[Errno 10048]` / address already in use, or the page keeps loading | An old server is still running on port 8000 | Stop it with Ctrl + C or `taskkill /F /IM uvicorn.exe`, or use `python -m uvicorn app.main:app --reload --port 8001` |
+| Postman: 401 on every request | Not logged in, or the token expired (24 h) | Run *Auth › Log in* again |
+| Postman: *Request could not be sent* on Preview a CSV file | Postman cannot read the file | Select the CSV again (see Postman step 4) |
 
 ---
 
 ## 2. How it fits together
+
+![Architecture](docs/architecture.png)
 
 ```text
  Browser (static/)                      Server (app/)                                 PostgreSQL
@@ -106,6 +119,7 @@ touch your PostgreSQL data. To run them against PostgreSQL instead, see tests/co
  │ import.js   CSV flow │ ◄──────────── │ importer.py       reads CSV files      │──► │ expenses       │
  │ charts.js   Chart.js │               │ categorizer.py    keyword matching     │ORM │ budgets        │
  │ api.js      fetch()  │               │ services.py       CRUD service classes │◄── │                │
+ │                      │               │ summary.py        chart calculations   │    │                │
  └──────────────────────┘               └────────────────────────────────────────┘    └────────────────┘
 ```
 
@@ -127,7 +141,7 @@ touch your PostgreSQL data. To run them against PostgreSQL instead, see tests/co
 
 ## 3. Database design (from our ER diagram, extended)
 
-![ER diagram](docs/er-diagram.jpg)
+![ER diagram](docs/er-diagram.svg)
 
 | Table | Columns | Relationships |
 | --- | --- | --- |
@@ -147,11 +161,21 @@ Design decisions:
 - **The database password is in `.env`**, which is never committed. `.env.example` shows the format.
 - **Charts are not stored.** They are computed from stored data on every request (`summary.py`).
 
+### Querying the database in pgAdmin
+
+The PostgreSQL database `expense_logger` has the five tables above. The file
+[docs/queries.sql](docs/queries.sql) contains example queries (category totals, spending
+per day, budget vs. spending, built-in vs. user rules) and a view
+`v_category_totals_by_month`. In pgAdmin: right-click `expense_logger` → Query Tool →
+open the file, select one query and run it with **F5**. Run the demo data first
+(`python -m scripts.seed_demo`) so the queries return rows.
+
 ---
 
 ## 4. REST API
 
-All endpoints except register/login need `Authorization: Bearer <token>`.
+All endpoints except register, login and `/api/health` need `Authorization: Bearer <token>`
+(otherwise 401).
 
 | Method | URL | Purpose | Success | Errors |
 | --- | --- | --- | --- | --- |
@@ -161,10 +185,10 @@ All endpoints except register/login need `Authorization: Bearer <token>`.
 | GET / POST | `/api/categories` | List / add categories | 200 / 201 | 409, 422 |
 | GET | `/api/expenses?month=YYYY-MM&category_id=` | List own expenses, newest first | 200 | 422 |
 | POST | `/api/expenses` | Add an expense | 201 | 422 |
-| GET / PUT / DELETE | `/api/expenses/{id}` | Read / edit / delete one | 200 / 200 / 204 | 404, 422 |
+| GET / PUT / DELETE | `/api/expenses/{id}` | Read / edit / delete one | 200 / 200 / 204 | 403, 404, 422 |
 | GET | `/api/budgets?month=YYYY-MM` | Budgets of a month | 200 | 422 |
 | PUT | `/api/budgets` | Set a limit (creates or updates) | 200 | 422 |
-| DELETE | `/api/budgets/{id}` | Remove a limit | 204 | 404 |
+| DELETE | `/api/budgets/{id}` | Remove a limit | 204 | 403, 404 |
 | GET | `/api/summary?month=YYYY-MM` | Totals, per category, per day, budget status | 200 | 422 |
 | POST | `/api/import/preview` | Upload CSV (form-data `file`), get suggested categories | 200 | 413, 422 |
 | POST | `/api/import/commit` | Save confirmed rows, learn from corrections | 201 | 422 |
@@ -201,7 +225,7 @@ amounts are expenses; positive ones are skipped as income when a file has both.
 | Member | Role | Files |
 | --- | --- | --- |
 | A | API Lead | `app/main.py`, `app/auth.py`, `app/routers/*`, `postman/*` |
-| B | Database Lead | `app/database.py`, `app/models.py`, `app/schemas.py`, `app/services.py`, `app/summary.py`, `scripts/*`, `.env.example` |
+| B | Database Lead | `app/database.py`, `app/models.py`, `app/schemas.py`, `app/services.py`, `app/summary.py`, `scripts/*`, `.env.example`, `docs/*` |
 | C | Frontend Lead | `static/*` |
 | D | Processing Engine & Testing Lead | `app/importer.py`, `app/categorizer.py`, `sample_data/*`, `tests/*`, `README.md`, `requirements.txt`, `pytest.ini`, `.gitignore`, `.vscode/` |
 
@@ -218,6 +242,8 @@ Every file starts with a comment naming its owner and explaining the key idea.
 - **Duplicates** are detected by same date + amount + description; two identical
   coffees on one day in a *new* file are both kept.
 - **JWT tokens** (HS256, `sub` + `exp`), kept in the browser's localStorage. An HttpOnly cookie would protect the token better against XSS.
+- **No server-side logout:** logging out only deletes the token in the browser; a
+  token stays valid until it expires after 24 h.
 - **No database migrations:** `create_all` makes missing tables but does not change
   existing ones; after a change to `models.py` run `python -m scripts.reset_db`.
   A real project would use Alembic.
@@ -232,17 +258,3 @@ instructor, and uploaded to the repository in one commit. After that, each membe
 reviewed, ran and documented the files they own, and made their own changes through
 branches and reviewed pull requests (e.g. ER diagram v2, SQL queries and view, budget
 tests, Postman authorization checks), visible in the Git history.
-
----
-
-## Key features
-
-- Register and log in (hashed passwords, JWT tokens valid 24 h)
-- Log, edit and delete expenses; live category suggestion while typing
-- Import bank or spreadsheet CSV files with a preview: automatic categorization,
-  duplicate detection, income rows skipped, nothing saved until confirmed
-- Learns keyword rules from your corrections; manage your own rules in the dashboard
-- Monthly budgets, overall or per category, with over-budget warnings
-- Dashboard: 4 summary cards and 3 charts (by category, budget vs. spending, by day)
-- Every user sees only their own data (401 / 403)
-- 62 automated tests, Postman collection, SQL queries and a view for pgAdmin
